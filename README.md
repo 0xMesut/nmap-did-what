@@ -61,6 +61,17 @@ Once the container is up and running, access the Grafana dashboard through your 
 http://localhost:3000
 ```
 
+5. **Auto-Nmap Usage**
+
+Once the container is up and running, access the Grafana dashboard through your web browser:
+
+```
+cd data
+source nmap_auto.sh
+nmap {target}
+```
+
+
 Use the default Grafana credentials (admin/admin) unless changed in the configuration. The Nmap dashboard should be loaded with the data from your Nmap scans.
 
 Multiple scans can be reviewed within the DB and the Nmap Dashboard time filters can be used to the view the scan information based on the time stamps from the scans.
