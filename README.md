@@ -5,7 +5,7 @@
 Full Tutorial is available here - [Nmap Dashboard using Grafana](https://hackertarget.com/nmap-dashboard-with-grafana/)
 
 ![Grafana Dashboard](https://hackertarget.com/images/nmap-grafana-dashboard.webp)
-
+<img width="1471" height="857" alt="ss" src="https://github.com/user-attachments/assets/d31776b1-9cb5-44b7-aaed-918a24461118" />
 ## Overview
 
 The project consists of two main components:
