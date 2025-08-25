@@ -70,13 +70,31 @@ def parse_nmap_xml(xml_file):
                 service_ostype = service.get('ostype', None) if service else None
                 service_info = (service_product if service_product else '') + (' ' + service_version if service_version else '')
                 http_title = None
+                http_headers = None
                 ssl_common_name = None
                 ssl_issuer = None
 
                 scripts = port.findall('script')
+                exploit_info = []      
                 for script in scripts:
                     if script.get('id') == 'http-title':
                         http_title = script.get('output')
+                    elif script.get('id') == 'http-headers':
+                        http_headers = script.get('output')
+                    elif script.get('id') == 'vulners':
+                        for i in script.findall('.//table'):
+                            if i.find("elem[@key='type']") is None or i.find("elem[@key='type']").text != 'cve':
+                                continue
+                            else:
+                                exc_dic = {}
+                                for x in i.findall('elem'):
+                                    key = x.get('key')
+                                    val = x.text
+                                    if key and val:
+                                        exc_dic[key] = val
+                                if exc_dic:
+                                    exploit_info.append(exc_dic)
+
                     elif script.get('id') == 'ssl-cert':
                         for table in script.findall('table'):
                             if table.get('key') == 'subject':
@@ -88,6 +106,14 @@ def parse_nmap_xml(xml_file):
                                 if 'commonName' in issuer_elems:
                                     ssl_issuer = f"{issuer_elems.get('commonName')} {issuer_elems.get('organizationName', '')}".strip()
 
+                if service is not None:
+                    cpes = [cpe.text for cpe in service.findall('cpe')]
+                cpes_str = ",".join(cpes) if cpes else ""
+
+                exploit_str = None
+                if exploit_info:
+                    exploit_str = "; ".join(", ".join(f"{k}={v}" for k, v in e.items()) for e in exploit_info)
+
                 if service_ostype and os == 'Unknown':
                     os = service_ostype
                 
@@ -98,12 +124,15 @@ def parse_nmap_xml(xml_file):
                     'service_name': service_name,
                     'service_info': service_info,
                     'http_title': http_title,
+                    'http_headers': http_headers,
                     'ssl_common_name': ssl_common_name,
-                    'ssl_issuer': ssl_issuer
+                    'ssl_issuer': ssl_issuer,
+                    'cpes': cpes_str,
+                    'exploit': exploit_str
                 })
 
             extraports = ports_element.find('extraports')
-            if len(extraports):
+            if extraports is not None and len(extraports):
                 extraports_count = int(extraports.get('count', '0'))
                 extraports_state = extraports.get('state', '')
                 if extraports_state == 'closed':
@@ -178,8 +207,11 @@ def create_database(db_name):
                  service_name TEXT,
                  service_info TEXT,
                  http_title TEXT,
+                 http_headers TEXT,
                  ssl_common_name TEXT,
                  ssl_issuer TEXT,
+                 cpes TEXT,
+                 exploit TEXT,
                  FOREIGN KEY (scan_id) REFERENCES scans (id),
                  FOREIGN KEY (host_id) REFERENCES hosts (id))''')
     
@@ -199,8 +231,8 @@ def insert_data(conn, scan, hosts):
         host_id = c.lastrowid
         
         for port in host['ports']:
-            c.execute("INSERT INTO ports (scan_id, host_id, port, protocol, state, service_name, service_info, http_title, ssl_common_name, ssl_issuer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-                      (scan_id, host_id, port['port'], port['protocol'], port['state'], port['service_name'], port['service_info'], port['http_title'], port['ssl_common_name'], port['ssl_issuer']))
+            c.execute("INSERT INTO ports (scan_id, host_id, port, protocol, state, service_name, service_info, http_title, http_headers, cpes, exploit, ssl_common_name, ssl_issuer) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                      (scan_id, host_id, port['port'], port['protocol'], port['state'], port['service_name'], port['service_info'], port['http_title'], port['http_headers'], port['cpes'], port['exploit'], port['ssl_common_name'], port['ssl_issuer']))
      
     conn.commit()
 
